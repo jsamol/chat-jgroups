@@ -1,15 +1,15 @@
 package pl.edu.agh.dsrg.sr.chat.UI.listener;
 
-import pl.edu.agh.dsrg.sr.chat.UI.ChatFrame;
+import pl.edu.agh.dsrg.sr.chat.Chat;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-public class ChatButtonActionListener implements ActionListener {
-    private final ChatFrame chatFrame;
+public class ChatActionListener implements ActionListener {
+    private final Chat chat;
 
-    public ChatButtonActionListener(ChatFrame chatFrame) {
-        this.chatFrame = chatFrame;
+    public ChatActionListener(Chat chat) {
+        this.chat = chat;
     }
 
     @Override
@@ -17,16 +17,16 @@ public class ChatButtonActionListener implements ActionListener {
         String command = e.getActionCommand();
         switch (command) {
             case "Exit":
-                chatFrame.exit();
+                chat.exit();
                 break;
             case "Create":
-                chatFrame.createNewChannel();
+                chat.createNewChannel();
                 break;
             case "Connect":
-                chatFrame.connect();
+                chat.connect();
                 break;
             case "Disconnect":
-                chatFrame.disconnect();
+                chat.disconnect();
                 break;
         }
     }

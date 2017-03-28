@@ -22,10 +22,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SyncThread extends Thread {
+    private final Chat chat;
     private final ChatFrame chatFrame;
     private JChannel channel;
 
-    public SyncThread(ChatFrame chatFrame) {
+    public SyncThread(Chat chat, ChatFrame chatFrame) {
+        this.chat = chat;
         this.chatFrame = chatFrame;
     }
 
@@ -64,19 +66,19 @@ public class SyncThread extends Thread {
                         String nickname = chatAction.getNickname();
                         String channelName = chatAction.getChannel();
                         if (actionType == ChatOperationProtos.ChatAction.ActionType.JOIN)
-                            chatFrame.addChannel(channelName, nickname);
+                            chat.addChannel(channelName, nickname);
                         else if (actionType == ChatOperationProtos.ChatAction.ActionType.LEAVE)
-                            chatFrame.removeNicknameFromChannelList(channelName, nickname);
+                            chat.removeNicknameFromChannelList(channelName, nickname);
                     } catch (InvalidProtocolBufferException ignored) {
                     }
                 }
 
                 @Override
                 public void getState(OutputStream output) throws Exception {
-                    synchronized (chatFrame.getDefaultListModelChannels()) {
+                    synchronized (chat.getDefaultListModelChannels()) {
                         ChatOperationProtos.ChatState chatState;
                         List<ChatOperationProtos.ChatAction> chatActionsList = new ArrayList<>();
-                        DefaultListModel<Channel> defaultListModelChannels = chatFrame.getDefaultListModelChannels();
+                        DefaultListModel<Channel> defaultListModelChannels = chat.getDefaultListModelChannels();
                         for (int i = 0; i < defaultListModelChannels.size(); i++) {
                             String channelName = defaultListModelChannels.elementAt(i).getName();
                             for (String nickname : defaultListModelChannels.elementAt(i).getNicknames()) {
@@ -105,7 +107,7 @@ public class SyncThread extends Thread {
 
                     List<ChatOperationProtos.ChatAction> chatActionList = chatState.getStateList();
                     for (ChatOperationProtos.ChatAction chatAction : chatActionList)
-                        chatFrame.addChannel(chatAction.getChannel(), chatAction.getNickname());
+                        chat.addChannel(chatAction.getChannel(), chatAction.getNickname());
                 }
             });
             channel.connect(Chat.managementChannel);

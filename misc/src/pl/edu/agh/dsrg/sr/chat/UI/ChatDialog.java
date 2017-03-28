@@ -14,7 +14,7 @@ public class ChatDialog extends JDialog implements ActionListener {
 
     private JTextField textField;
 
-    ChatDialog(JFrame parent, String title, String labelText) {
+    public ChatDialog(JFrame parent, String title, String labelText) {
         super(parent, true);
         setTitle(title);
         addWindowListener(new WindowAdapter() {
@@ -62,11 +62,11 @@ public class ChatDialog extends JDialog implements ActionListener {
             setVisible(false);
     }
 
-    String getField() {
+    public String getField() {
         return field;
     }
 
-    boolean isOkClicked() {
+    public boolean isOkClicked() {
         return okClicked;
     }
 }
