@@ -113,7 +113,6 @@ public class SyncThread extends Thread {
             join();
             channel.close();
         } catch (InterruptedException e) {
-            chatFrame.exit();
             if (channel != null && channel.isOpen())
                 channel.close();
         } catch (Exception e) {

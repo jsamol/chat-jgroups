@@ -19,7 +19,8 @@ public class ChatKeyListener implements KeyListener {
 
     @Override
     public void keyPressed(KeyEvent e) {
-        chatFrame.keyPressed(e.getKeyCode());
+        if (e.getKeyCode() == KeyEvent.VK_ENTER)
+            chatFrame.getTextFromArea();
     }
 
     @Override

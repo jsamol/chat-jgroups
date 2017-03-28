@@ -14,11 +14,13 @@ public class Channel {
     }
 
     public void addNickname(String nickname) {
-        this.nicknames.add(nickname);
+        if (!nicknames.contains(nickname))
+            this.nicknames.add(nickname);
     }
 
     public void removeNickname(String nickname) {
-        this.nicknames.remove(nickname);
+        if (nicknames.contains(nickname))
+            this.nicknames.remove(nickname);
     }
 
     public String getName() {

@@ -42,10 +42,10 @@ public class ChatFrame extends JFrame {
         });
         initLayout();
         setVisible(true);
+        connectedChannels = new ArrayList<>();
         ChatDialog enterNicknameDialog = new ChatDialog(this, "Enter your nickname", "Nickname");
         if (enterNicknameDialog.isOkClicked()) {
             nickname = enterNicknameDialog.getField();
-            connectedChannels = new ArrayList<>();
             syncThread = new SyncThread(this);
             syncThread.start();
         }
@@ -106,6 +106,7 @@ public class ChatFrame extends JFrame {
         textAreaMessage.addKeyListener(new ChatKeyListener(this));
         textAreaMessage.setLineWrap(true);
         textAreaMessage.setWrapStyleWord(true);
+        textAreaMessage.getInputMap().put(KeyStroke.getKeyStroke("ENTER"), "none");
         JScrollPane scrollPaneMessage = new JScrollPane(textAreaMessage);
         scrollPaneMessage.setBounds(10, 510, 775, 90);
         add(scrollPaneMessage);
@@ -196,9 +197,7 @@ public class ChatFrame extends JFrame {
         dispose();
     }
 
-    public void keyPressed(int keyCode) {
-        if (keyCode != KeyEvent.VK_ENTER)
-            return;
+    public void getTextFromArea() {
         String message = textAreaMessage.getText();
         if (message.equals(""))
             return;
@@ -230,29 +229,33 @@ public class ChatFrame extends JFrame {
         }
     }
 
-    public synchronized void addChannel(String channelName, String nickname) {
-        for (int i = 0; i < defaultListModelChannels.size(); i++) {
-            if (defaultListModelChannels.elementAt(i).getName().equals(channelName)) {
-                defaultListModelChannels.elementAt(i).addNickname(nickname);
-                if (defaultListModelChannels.elementAt(i) == selectedChannel)
-                    defaultListModelUsers.addElement(nickname);
-                return;
+    public void addChannel(String channelName, String nickname) {
+        synchronized (this) {
+            for (int i = 0; i < defaultListModelChannels.size(); i++) {
+                if (defaultListModelChannels.elementAt(i).getName().equals(channelName)) {
+                    defaultListModelChannels.elementAt(i).addNickname(nickname);
+                    if (defaultListModelChannels.elementAt(i) == selectedChannel)
+                        defaultListModelUsers.addElement(nickname);
+                    return;
+                }
             }
+            Channel channel = new Channel(channelName);
+            channel.addNickname(nickname);
+            defaultListModelChannels.addElement(channel);
         }
-        Channel channel = new Channel(channelName);
-        channel.addNickname(nickname);
-        defaultListModelChannels.addElement(channel);
     }
 
-    public synchronized void removeNicknameFromChannelList(String channelName, String nickname) {
-        for (int i = 0; i < defaultListModelChannels.size(); i++) {
-            if (defaultListModelChannels.elementAt(i).getName().equals(channelName)) {
-                defaultListModelChannels.elementAt(i).removeNickname(nickname);
-                if (defaultListModelChannels.elementAt(i).getNicknames().size() == 0)
-                    defaultListModelChannels.remove(i);
-                if (defaultListModelChannels.elementAt(i) == selectedChannel)
-                    defaultListModelUsers.removeElement(nickname);
-                return;
+    public void removeNicknameFromChannelList(String channelName, String nickname) {
+        synchronized (this) {
+            for (int i = 0; i < defaultListModelChannels.size(); i++) {
+                if (defaultListModelChannels.elementAt(i).getName().equals(channelName)) {
+                    defaultListModelChannels.elementAt(i).removeNickname(nickname);
+                    if (defaultListModelChannels.elementAt(i).getNicknames().size() == 0)
+                        defaultListModelChannels.remove(i);
+                    else if (defaultListModelChannels.elementAt(i) == selectedChannel)
+                        defaultListModelUsers.removeElement(nickname);
+                    return;
+                }
             }
         }
     }
