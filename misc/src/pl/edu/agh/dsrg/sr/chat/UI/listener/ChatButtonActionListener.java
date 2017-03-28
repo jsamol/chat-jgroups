@@ -5,10 +5,10 @@ import pl.edu.agh.dsrg.sr.chat.UI.ChatFrame;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-public class ChatActionListener implements ActionListener {
+public class ChatButtonActionListener implements ActionListener {
     private final ChatFrame chatFrame;
 
-    public ChatActionListener(ChatFrame chatFrame) {
+    public ChatButtonActionListener(ChatFrame chatFrame) {
         this.chatFrame = chatFrame;
     }
 

@@ -1640,7 +1640,7 @@ public final class ChatOperationProtos {
           internal_static_ChatMessage_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ChatMessage_descriptor,
-              new java.lang.String[] { "Message", },
+              new java.lang.String[] { "ChatHistory", },
               pl.edu.agh.dsrg.sr.chat.protos.ChatOperationProtos.ChatMessage.class,
               pl.edu.agh.dsrg.sr.chat.protos.ChatOperationProtos.ChatMessage.Builder.class);
           return null;

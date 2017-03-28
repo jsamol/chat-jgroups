@@ -58,7 +58,7 @@ public class ChannelThread extends Thread {
                     ChatOperationProtos.ChatMessage chatMessage;
                     try {
                         chatMessage = ChatOperationProtos.ChatMessage.parseFrom(msg.getBuffer());
-                        chatFrame.insertText(chatMessage.getMessage(), "MESSAGE");
+                        chatFrame.insertText(chatMessage.getMessage(), channelName);
                     } catch (InvalidProtocolBufferException ignored) {
                     }
                 }
@@ -72,16 +72,14 @@ public class ChannelThread extends Thread {
                 channel.close();
         } catch (Exception e) {
             chatFrame.insertText(
-                    "Error while connecting the channel \"" + channelName + "\": " + e + "\n",
-                    "LOG"
-            );
+                    "Error while connecting the channel \"" + channelName + "\": " + e + ".\n");
         }
     }
 
     public void sendMessage(String messageString) {
         ChatOperationProtos.ChatMessage chatMessage;
         chatMessage = ChatOperationProtos.ChatMessage.newBuilder()
-                .setMessage("[" + channelName + "] " + nickname + ": " + messageString + "\n")
+                .setMessage(nickname + ": " + messageString + "\n")
                 .build();
         Message message = new Message(null, null, chatMessage.toByteArray());
         try {
@@ -91,7 +89,8 @@ public class ChannelThread extends Thread {
                     + messageString + "\""
                     + "to channel \""
                     + channelName + "\": "
-                    + e + "\n", "LOG");
+                    + e + ".\n"
+            );
         }
     }
 
@@ -104,5 +103,10 @@ public class ChannelThread extends Thread {
         if (channel != null)
             channel.close();
         interrupt();
+    }
+
+    @Override
+    public String toString() {
+        return channelName;
     }
 }

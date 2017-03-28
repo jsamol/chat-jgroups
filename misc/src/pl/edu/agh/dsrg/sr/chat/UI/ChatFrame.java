@@ -1,8 +1,7 @@
 package pl.edu.agh.dsrg.sr.chat.UI;
 
 import pl.edu.agh.dsrg.sr.chat.Channel;
-import pl.edu.agh.dsrg.sr.chat.UI.listener.ChatActionListener;
-import pl.edu.agh.dsrg.sr.chat.UI.listener.ChatKeyListener;
+import pl.edu.agh.dsrg.sr.chat.UI.listener.ChatButtonActionListener;
 import pl.edu.agh.dsrg.sr.chat.UI.listener.ChatListSelectionListener;
 import pl.edu.agh.dsrg.sr.chat.channelClient.ChannelThread;
 import pl.edu.agh.dsrg.sr.chat.channelClient.SyncThread;
@@ -12,20 +11,26 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static pl.edu.agh.dsrg.sr.chat.Chat.nickname;
 
 public class ChatFrame extends JFrame {
-    private List<ChannelThread> connectedChannels;
+    private Map<String, List<String>> history;
+    private DefaultComboBoxModel<ChannelThread> defaultComboBoxModelChannels;
 
     private Channel selectedChannel = null;
+    private ChannelThread selectedChannelThread = null;
 
     private SyncThread syncThread = null;
 
     private DefaultListModel<Channel> defaultListModelChannels;
 
     private DefaultListModel<String> defaultListModelUsers;
+
+    private JLabel labelNickname;
 
     private JTextArea textAreaChat;
     private JTextArea textAreaLog;
@@ -42,12 +47,13 @@ public class ChatFrame extends JFrame {
         });
         initLayout();
         setVisible(true);
-        connectedChannels = new ArrayList<>();
         ChatDialog enterNicknameDialog = new ChatDialog(this, "Enter your nickname", "Nickname");
         if (enterNicknameDialog.isOkClicked()) {
             nickname = enterNicknameDialog.getField();
+            labelNickname.setText("Your nickname: " + nickname);
             syncThread = new SyncThread(this);
             syncThread.start();
+            history = new LinkedHashMap<>();
         }
         else
             exit();
@@ -58,12 +64,26 @@ public class ChatFrame extends JFrame {
         setResizable(false);
         setLayout(null);
 
+        defaultComboBoxModelChannels = new DefaultComboBoxModel<>();
+        JComboBox<ChannelThread> comboBoxChannelThread = new JComboBox<>(defaultComboBoxModelChannels);
+        comboBoxChannelThread.setBounds(10, 20, 480, 20);
+        comboBoxChannelThread.addActionListener(e -> {
+            JComboBox comboBox = (JComboBox) e.getSource();
+            if (comboBox.getSelectedItem() != null && comboBox.getSelectedItem() != selectedChannel) {
+                selectedChannelThread = (ChannelThread) comboBox.getSelectedItem();
+                updateTextArea();
+            }
+            else
+                textAreaChat.setText(null);
+        });
+        add(comboBoxChannelThread);
+
         textAreaChat = new JTextArea();
         textAreaChat.setEditable(false);
         textAreaChat.setLineWrap(true);
         textAreaChat.setWrapStyleWord(true);
         JScrollPane scrollPaneLeft = new JScrollPane(textAreaChat);
-        scrollPaneLeft.setBounds(10, 20, 480,365);
+        scrollPaneLeft.setBounds(10, 45, 480,435);
         add(scrollPaneLeft);
 
 
@@ -97,19 +117,29 @@ public class ChatFrame extends JFrame {
         textAreaLog.setLineWrap(true);
         textAreaLog.setWrapStyleWord(true);
         JLabel labelLog = new JLabel("Log");
-        labelLog.setBounds(10, 390, 775, 20);
+        labelLog.setBounds(500, 390, 775, 20);
         add(labelLog);
         JScrollPane scrollPaneBottom = new JScrollPane(textAreaLog);
-        scrollPaneBottom.setBounds(10, 415, 775, 90);
+        scrollPaneBottom.setBounds(500, 415, 285, 185);
         add(scrollPaneBottom);
 
+        labelNickname = new JLabel();
+        labelNickname.setBounds(10, 485, 230, 20);
+        add(labelNickname);
+
         textAreaMessage = new JTextArea();
-        textAreaMessage.addKeyListener(new ChatKeyListener(this));
+        textAreaMessage.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER)
+                    getTextFromArea();
+            }
+        });
         textAreaMessage.setLineWrap(true);
         textAreaMessage.setWrapStyleWord(true);
         textAreaMessage.getInputMap().put(KeyStroke.getKeyStroke("ENTER"), "none");
         JScrollPane scrollPaneMessage = new JScrollPane(textAreaMessage);
-        scrollPaneMessage.setBounds(10, 510, 775, 90);
+        scrollPaneMessage.setBounds(10, 510, 480, 90);
         add(scrollPaneMessage);
 
         JPanel panelBottom = new JPanel();
@@ -117,7 +147,7 @@ public class ChatFrame extends JFrame {
         panelBottom.setBounds(10, 615, 775, 35);
         add(panelBottom);
 
-        ChatActionListener chatActionListener = new ChatActionListener(this);
+        ChatButtonActionListener chatActionListener = new ChatButtonActionListener(this);
         JButton buttonCreateNew = new JButton("Create new channel");
         buttonCreateNew.setActionCommand("Create");
         buttonCreateNew.addActionListener(chatActionListener);
@@ -142,105 +172,96 @@ public class ChatFrame extends JFrame {
             String channelName;
             channelName = createNewDialog.getField();
             ChannelThread channelThread = new ChannelThread(this, syncThread, channelName);
-            connectedChannels.add(channelThread);
+            history.put(channelName, new ArrayList<>());
+            defaultComboBoxModelChannels.addElement(channelThread);
             channelThread.start();
-            insertText("New channel \"" + channelName + "\" created.\n", "LOG");
+            insertText("New channel \"" + channelName + "\" created.\n");
             syncThread.sendAction(ChatOperationProtos.ChatAction.ActionType.JOIN, nickname, channelName);
         }
     }
 
     public void connect() {
         if (selectedChannel != null) {
-            for (ChannelThread channelThread : connectedChannels) {
-                if (selectedChannel.getName().equals(channelThread.getChannelName()))
-                    insertText("Error. You are already connected to the channel \""
-                            + selectedChannel + "\"\n", "LOG");
+            for (int i = 0; i < defaultComboBoxModelChannels.getSize(); i++) {
+                if (selectedChannel.getName().equals(defaultComboBoxModelChannels.getElementAt(i).getChannelName())) {
+                    insertText("Error. You are already connected to the channel \"" + selectedChannel + "\".\n");
+                    return;
+                }
             }
             ChannelThread channelThread = new ChannelThread(this, syncThread, selectedChannel.getName());
-            connectedChannels.add(channelThread);
+            history.put(selectedChannel.getName(), new ArrayList<>());
+            defaultComboBoxModelChannels.addElement(channelThread);
             channelThread.start();
             syncThread.sendAction(ChatOperationProtos.ChatAction.ActionType.JOIN, nickname, selectedChannel.getName());
+            insertText("Connected to the channel \"" + selectedChannel.getName() + "\".\n");
         }
         else
-            insertText("Error. Select a channel to connect first.\n", "LOG");
+            insertText("Error. Select a channel to connect first.\n");
     }
 
     public void disconnect() {
         if (selectedChannel != null) {
             ChannelThread channelThreadToDisconnect = null;
-            for (ChannelThread channelThread : connectedChannels) {
-                if (selectedChannel.getName().equals(channelThread.getChannelName()))
-                    channelThreadToDisconnect = channelThread;
+            for (int i = 0; i < defaultComboBoxModelChannels.getSize(); i++) {
+                if (selectedChannel.getName().equals(defaultComboBoxModelChannels.getElementAt(i).getChannelName()))
+                    channelThreadToDisconnect = defaultComboBoxModelChannels.getElementAt(i);
             }
             if (channelThreadToDisconnect != null) {
                 channelThreadToDisconnect.disconnect();
-                connectedChannels.remove(channelThreadToDisconnect);
                 syncThread.sendAction(
                         ChatOperationProtos.ChatAction.ActionType.LEAVE,
                         nickname,
                         selectedChannel.getName()
                 );
-                insertText("Channel \"" + selectedChannel + "\" disconnected\n", "LOG");
+                insertText("Disconnected from the channel \"" + selectedChannel + "\".\n");
+                defaultComboBoxModelChannels.removeElement(channelThreadToDisconnect);
+                history.remove(selectedChannel.getName());
             }
             else
-                insertText("Error. You are not connected to the channel \"" + selectedChannel + "\"\n", "LOG");
+                insertText("Error. You are not connected to the channel \"" + selectedChannel + "\".\n");
         }
         else
-            insertText("Error. Select a channel to disconnect first.\n", "LOG");
+            insertText("Error. Select a channel to disconnect first.\n");
     }
 
     public void exit() {
-        for (ChannelThread channelThread : connectedChannels)
-            if (!channelThread.isInterrupted())
-                channelThread.disconnect();
+        for (int i = 0; i < defaultComboBoxModelChannels.getSize(); i++) {
+            if (!defaultComboBoxModelChannels.getElementAt(i).isInterrupted())
+                defaultComboBoxModelChannels.getElementAt(i).disconnect();
+        }
         if (syncThread != null && !syncThread.isInterrupted())
             syncThread.disconnect();
         dispose();
     }
 
-    public void getTextFromArea() {
+    private void updateTextArea() {
+        textAreaChat.setText("\t\tChannel \"" + selectedChannelThread.getChannelName() + "\"\n\n");
+        for (String message : history.get(selectedChannelThread.getChannelName()))
+            textAreaChat.append(message);
+    }
+
+    private void getTextFromArea() {
         String message = textAreaMessage.getText();
         if (message.equals(""))
             return;
         textAreaMessage.setText("");
-        if (selectedChannel != null) {
-            boolean found = false;
-            for (ChannelThread channelThread : connectedChannels) {
-                if (channelThread.getChannelName().equals(selectedChannel.getName())) {
-                    found = true;
-                    channelThread.sendMessage(message);
-                }
-            }
-            if (!found)
-                insertText(
-                        "You have to be connected to the \"" + selectedChannel.getName() + "channel first\n",
-                        "LOG"
-                );
-        }
-        else
-            insertText("You have select a channel first\n", "LOG");
+        if (selectedChannelThread != null)
+            selectedChannelThread.sendMessage(message);
     }
 
-    public void insertText(String text, String type) {
-        JTextArea textArea = null;
-        switch (type) {
-            case "MESSAGE":
-                textArea = textAreaChat;
-                break;
-            case "LOG":
-                textArea = textAreaLog;
-                break;
-        }
-        if (SwingUtilities.isEventDispatchThread()) {
-            if (textArea != null)
-                textArea.append(text);
-        }
+    public void insertText(String text, String channelName) {
+        history.get(channelName).add(text);
+        if (channelName.equals(selectedChannelThread.getChannelName()))
+            textAreaChat.append(text);
+        else
+            insertText("Received message on the channel \"" + channelName + "\".\n");
+    }
+
+    public void insertText(String text) {
+        if (SwingUtilities.isEventDispatchThread())
+            textAreaLog.append(text);
         else {
-                JTextArea finalTextArea = textArea;
-                SwingUtilities.invokeLater(() -> {
-                    if (finalTextArea != null)
-                        finalTextArea.append(text);
-                });
+            SwingUtilities.invokeLater(() -> textAreaLog.append(text));
         }
     }
 

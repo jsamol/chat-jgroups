@@ -116,7 +116,7 @@ public class SyncThread extends Thread {
             if (channel != null && channel.isOpen())
                 channel.close();
         } catch (Exception e) {
-            chatFrame.insertText("Error while connecting the management channel: " + e + "\n", "LOG");
+            chatFrame.insertText("Error while connecting the management channel: " + e + ".\n");
         }
     }
 
@@ -131,7 +131,7 @@ public class SyncThread extends Thread {
         try {
             channel.send(message);
         } catch (Exception e) {
-            chatFrame.insertText("Error while sending a message to the management channel: " + e + "\n", "LOG");
+            chatFrame.insertText("Error while sending a message to the management channel: " + e + ".\n");
         }
     }
 
