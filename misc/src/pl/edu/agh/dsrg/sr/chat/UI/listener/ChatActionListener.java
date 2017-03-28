@@ -6,7 +6,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class ChatActionListener implements ActionListener {
-    private ChatFrame chatFrame;
+    private final ChatFrame chatFrame;
 
     public ChatActionListener(ChatFrame chatFrame) {
         this.chatFrame = chatFrame;

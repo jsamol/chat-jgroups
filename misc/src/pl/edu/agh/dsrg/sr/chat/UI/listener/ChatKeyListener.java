@@ -6,7 +6,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 
 public class ChatKeyListener implements KeyListener {
-    private ChatFrame chatFrame;
+    private final ChatFrame chatFrame;
 
     public ChatKeyListener(ChatFrame chatFrame) {
         this.chatFrame = chatFrame;

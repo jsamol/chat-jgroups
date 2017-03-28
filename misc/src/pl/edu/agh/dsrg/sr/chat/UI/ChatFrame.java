@@ -75,6 +75,7 @@ public class ChatFrame extends JFrame {
         JList<Channel> listChannels = new JList<>(defaultListModelChannels);
         listChannels.setFont(listChannels.getFont().deriveFont(Font.PLAIN));
         ListSelectionModel listSelectionModel = listChannels.getSelectionModel();
+        listSelectionModel.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         listSelectionModel.addListSelectionListener(new ChatListSelectionListener(this));
         JScrollPane scrollPaneTopRight = new JScrollPane(listChannels);
         scrollPaneTopRight.setBounds(500, 45, 285, 155);
@@ -202,8 +203,22 @@ public class ChatFrame extends JFrame {
         if (message.equals(""))
             return;
         textAreaMessage.setText("");
-        for (ChannelThread channelThread : connectedChannels)
-            channelThread.sendMessage(message);
+        if (selectedChannel != null) {
+            boolean found = false;
+            for (ChannelThread channelThread : connectedChannels) {
+                if (channelThread.getChannelName().equals(selectedChannel.getName())) {
+                    found = true;
+                    channelThread.sendMessage(message);
+                }
+            }
+            if (!found)
+                insertText(
+                        "You have to be connected to the \"" + selectedChannel.getName() + "channel first\n",
+                        "LOG"
+                );
+        }
+        else
+            insertText("You have select a channel first\n", "LOG");
     }
 
     public void insertText(String text, String type) {

@@ -7,7 +7,7 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 public class ChatListSelectionListener implements ListSelectionListener {
-    private ChatFrame chatFrame;
+    private final ChatFrame chatFrame;
 
     public ChatListSelectionListener(ChatFrame chatFrame) {
         this.chatFrame = chatFrame;

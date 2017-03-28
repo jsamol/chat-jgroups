@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SyncThread extends Thread {
-    private ChatFrame chatFrame;
+    private final ChatFrame chatFrame;
     private JChannel channel;
 
     public SyncThread(ChatFrame chatFrame) {

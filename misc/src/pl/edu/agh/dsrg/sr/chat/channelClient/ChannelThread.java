@@ -17,7 +17,7 @@ import static pl.edu.agh.dsrg.sr.chat.Chat.nickname;
 public class ChannelThread extends Thread {
     private JChannel channel = null;
 
-    private ChatFrame chatFrame;
+    private final ChatFrame chatFrame;
     private SyncThread syncThread;
     private String channelName;
 
