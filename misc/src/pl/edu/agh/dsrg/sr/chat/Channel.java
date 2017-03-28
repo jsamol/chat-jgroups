@@ -3,9 +3,7 @@ package pl.edu.agh.dsrg.sr.chat;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by julia on 28.03.2017.
- */
+
 public class Channel {
     private String name;
     private List<String> nicknames;

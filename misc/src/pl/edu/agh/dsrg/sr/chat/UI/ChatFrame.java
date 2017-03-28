@@ -1,22 +1,22 @@
 package pl.edu.agh.dsrg.sr.chat.UI;
 
 import pl.edu.agh.dsrg.sr.chat.Channel;
-import pl.edu.agh.dsrg.sr.chat.client.ChannelThread;
-import pl.edu.agh.dsrg.sr.chat.client.SyncThread;
+import pl.edu.agh.dsrg.sr.chat.UI.listener.ChatActionListener;
+import pl.edu.agh.dsrg.sr.chat.UI.listener.ChatKeyListener;
+import pl.edu.agh.dsrg.sr.chat.UI.listener.ChatListSelectionListener;
+import pl.edu.agh.dsrg.sr.chat.channelClient.ChannelThread;
+import pl.edu.agh.dsrg.sr.chat.channelClient.SyncThread;
 import pl.edu.agh.dsrg.sr.chat.protos.ChatOperationProtos;
 
 import javax.swing.*;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by julia on 26.03.2017.
- */
-public class ChatFrame extends JFrame implements ActionListener, ListSelectionListener {
+import static pl.edu.agh.dsrg.sr.chat.Chat.nickname;
+
+public class ChatFrame extends JFrame {
     private List<ChannelThread> connectedChannels;
 
     private Channel selectedChannel = null;
@@ -24,25 +24,16 @@ public class ChatFrame extends JFrame implements ActionListener, ListSelectionLi
     private SyncThread syncThread = null;
 
     private DefaultListModel<Channel> defaultListModelChannels;
-    private JList<Channel> listChannels;
 
     private DefaultListModel<String> defaultListModelUsers;
-    private JList<String> listUsers;
 
     private JTextArea textAreaChat;
     private JTextArea textAreaLog;
     private JTextArea textAreaMessage;
 
-    private JButton buttonCreateNew;
-    private JButton buttonConnect;
-    private JButton buttonDisconnect;
-    private JButton buttonExit;
-
-    private String nickname;
-
     public ChatFrame() {
         super("Chat");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosed(WindowEvent e) {
@@ -51,10 +42,10 @@ public class ChatFrame extends JFrame implements ActionListener, ListSelectionLi
         });
         initLayout();
         setVisible(true);
-        connectedChannels = new ArrayList<>();
         ChatDialog enterNicknameDialog = new ChatDialog(this, "Enter your nickname", "Nickname");
         if (enterNicknameDialog.isOkClicked()) {
             nickname = enterNicknameDialog.getField();
+            connectedChannels = new ArrayList<>();
             syncThread = new SyncThread(this);
             syncThread.start();
         }
@@ -62,7 +53,7 @@ public class ChatFrame extends JFrame implements ActionListener, ListSelectionLi
             exit();
     }
 
-    public void initLayout() {
+    private void initLayout() {
         setSize(800, 700);
         setResizable(false);
         setLayout(null);
@@ -81,10 +72,10 @@ public class ChatFrame extends JFrame implements ActionListener, ListSelectionLi
         add(labelChannels);
 
         defaultListModelChannels = new DefaultListModel<>();
-        listChannels = new JList<>(defaultListModelChannels);
+        JList<Channel> listChannels = new JList<>(defaultListModelChannels);
         listChannels.setFont(listChannels.getFont().deriveFont(Font.PLAIN));
         ListSelectionModel listSelectionModel = listChannels.getSelectionModel();
-        listSelectionModel.addListSelectionListener(this);
+        listSelectionModel.addListSelectionListener(new ChatListSelectionListener(this));
         JScrollPane scrollPaneTopRight = new JScrollPane(listChannels);
         scrollPaneTopRight.setBounds(500, 45, 285, 155);
         add(scrollPaneTopRight);
@@ -94,7 +85,7 @@ public class ChatFrame extends JFrame implements ActionListener, ListSelectionLi
         add(labelUsers);
 
         defaultListModelUsers = new DefaultListModel<>();
-        listUsers = new JList<>(defaultListModelUsers);
+        JList<String> listUsers = new JList<>(defaultListModelUsers);
         listUsers.setFont(listUsers.getFont().deriveFont(Font.PLAIN));
         JScrollPane scrollPaneBottomRight = new JScrollPane(listUsers);
         scrollPaneBottomRight.setBounds(500, 230, 285, 155);
@@ -112,12 +103,7 @@ public class ChatFrame extends JFrame implements ActionListener, ListSelectionLi
         add(scrollPaneBottom);
 
         textAreaMessage = new JTextArea();
-        textAreaMessage.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                ChatFrame.this.keyPressed(e.getKeyCode());
-            }
-        });
+        textAreaMessage.addKeyListener(new ChatKeyListener(this));
         textAreaMessage.setLineWrap(true);
         textAreaMessage.setWrapStyleWord(true);
         JScrollPane scrollPaneMessage = new JScrollPane(textAreaMessage);
@@ -129,67 +115,36 @@ public class ChatFrame extends JFrame implements ActionListener, ListSelectionLi
         panelBottom.setBounds(10, 615, 775, 35);
         add(panelBottom);
 
-        buttonCreateNew = new JButton("Create new channel");
+        ChatActionListener chatActionListener = new ChatActionListener(this);
+        JButton buttonCreateNew = new JButton("Create new channel");
         buttonCreateNew.setActionCommand("Create");
-        buttonCreateNew.addActionListener(this);
+        buttonCreateNew.addActionListener(chatActionListener);
         panelBottom.add(buttonCreateNew);
 
-        buttonConnect = new JButton("Connect");
-        buttonConnect.addActionListener(this);
+        JButton buttonConnect = new JButton("Connect");
+        buttonConnect.addActionListener(chatActionListener);
         panelBottom.add(buttonConnect);
 
-        buttonDisconnect = new JButton("Disconnect");
-        buttonDisconnect.addActionListener(this);
+        JButton buttonDisconnect = new JButton("Disconnect");
+        buttonDisconnect.addActionListener(chatActionListener);
         panelBottom.add(buttonDisconnect);
 
-        buttonExit = new JButton("Exit");
-        buttonExit.addActionListener(this);
+        JButton buttonExit = new JButton("Exit");
+        buttonExit.addActionListener(chatActionListener);
         panelBottom.add(buttonExit);
-    }
-
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        String command = e.getActionCommand();
-        if (command.equals("Exit"))
-            exit();
-        else if (command.equals("Create"))
-            createNewChannel();
-        else if (command.equals("Connect"))
-            connect();
-        else if (command.equals("Disconnect"))
-            disconnect();
-    }
-
-    @Override
-    public void valueChanged(ListSelectionEvent e) {
-        defaultListModelUsers.removeAllElements();
-        selectedChannel = null;
-        ListSelectionModel listSelectionModel = (ListSelectionModel) e.getSource();
-        if (!e.getValueIsAdjusting() && !listSelectionModel.isSelectionEmpty()) {
-            int minIndex = listSelectionModel.getMinSelectionIndex();
-            int maxIndex = listSelectionModel.getMaxSelectionIndex();
-            for (int i = minIndex; i <= maxIndex; i++) {
-                if (listSelectionModel.isSelectedIndex(i)) {
-                    selectedChannel = defaultListModelChannels.elementAt(i);
-                    for (String nickname : defaultListModelChannels.elementAt(i).getNicknames())
-                        defaultListModelUsers.addElement(nickname);
-                }
-            }
-        }
     }
 
     public void createNewChannel() {
         ChatDialog createNewDialog = new ChatDialog(this, "Create new channel", "Channel name");
         if (createNewDialog.isOkClicked()) {
-            String channelName = createNewDialog.getField();
-            ChannelThread channelThread = new ChannelThread(this, channelName);
+            String channelName;
+            channelName = createNewDialog.getField();
+            ChannelThread channelThread = new ChannelThread(this, syncThread, channelName);
             connectedChannels.add(channelThread);
             channelThread.start();
             insertText("New channel \"" + channelName + "\" created.\n", "LOG");
             syncThread.sendAction(ChatOperationProtos.ChatAction.ActionType.JOIN, nickname, channelName);
         }
-        else
-            return;
     }
 
     public void connect() {
@@ -199,7 +154,7 @@ public class ChatFrame extends JFrame implements ActionListener, ListSelectionLi
                     insertText("Error. You are already connected to the channel \""
                             + selectedChannel + "\"\n", "LOG");
             }
-            ChannelThread channelThread = new ChannelThread(this, selectedChannel.getName());
+            ChannelThread channelThread = new ChannelThread(this, syncThread, selectedChannel.getName());
             connectedChannels.add(channelThread);
             channelThread.start();
             syncThread.sendAction(ChatOperationProtos.ChatAction.ActionType.JOIN, nickname, selectedChannel.getName());
@@ -234,8 +189,9 @@ public class ChatFrame extends JFrame implements ActionListener, ListSelectionLi
 
     public void exit() {
         for (ChannelThread channelThread : connectedChannels)
-            channelThread.disconnect();
-        if (syncThread != null)
+            if (!channelThread.isInterrupted())
+                channelThread.disconnect();
+        if (syncThread != null && !syncThread.isInterrupted())
             syncThread.disconnect();
         dispose();
     }
@@ -253,25 +209,25 @@ public class ChatFrame extends JFrame implements ActionListener, ListSelectionLi
 
     public void insertText(String text, String type) {
         JTextArea textArea = null;
-        if (type.equals("MESSAGE"))
-            textArea = textAreaChat;
-        else if (type.equals("LOG"))
-            textArea = textAreaLog;
-        if (SwingUtilities.isEventDispatchThread())
-                textArea.append(text);
-        else {
-            JTextArea finalTextArea = textArea;
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                    finalTextArea.append(text);
-                }
-            });
+        switch (type) {
+            case "MESSAGE":
+                textArea = textAreaChat;
+                break;
+            case "LOG":
+                textArea = textAreaLog;
+                break;
         }
-    }
-
-    public String getNickname() {
-        return nickname;
+        if (SwingUtilities.isEventDispatchThread()) {
+            if (textArea != null)
+                textArea.append(text);
+        }
+        else {
+                JTextArea finalTextArea = textArea;
+                SwingUtilities.invokeLater(() -> {
+                    if (finalTextArea != null)
+                        finalTextArea.append(text);
+                });
+        }
     }
 
     public synchronized void addChannel(String channelName, String nickname) {
@@ -303,5 +259,13 @@ public class ChatFrame extends JFrame implements ActionListener, ListSelectionLi
 
     public DefaultListModel<Channel> getDefaultListModelChannels() {
         return defaultListModelChannels;
+    }
+
+    public void setSelectedChannel(Channel selectedChannel) {
+        this.selectedChannel = selectedChannel;
+    }
+
+    public DefaultListModel<String> getDefaultListModelUsers() {
+        return defaultListModelUsers;
     }
 }

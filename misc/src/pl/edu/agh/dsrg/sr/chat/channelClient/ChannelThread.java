@@ -1,4 +1,4 @@
-package pl.edu.agh.dsrg.sr.chat.client;
+package pl.edu.agh.dsrg.sr.chat.channelClient;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.jgroups.JChannel;
@@ -12,17 +12,18 @@ import pl.edu.agh.dsrg.sr.chat.protos.ChatOperationProtos;
 
 import java.net.InetAddress;
 
-/**
- * Created by julia on 27.03.2017.
- */
+import static pl.edu.agh.dsrg.sr.chat.Chat.nickname;
+
 public class ChannelThread extends Thread {
     private JChannel channel = null;
 
     private ChatFrame chatFrame;
+    private SyncThread syncThread;
     private String channelName;
 
-    public ChannelThread(ChatFrame chatFrame, String channelName) {
+    public ChannelThread(ChatFrame chatFrame, SyncThread syncThread, String channelName) {
         this.chatFrame = chatFrame;
+        this.syncThread = syncThread;
         this.channelName = channelName;
     }
 
@@ -54,26 +55,33 @@ public class ChannelThread extends Thread {
             channel.setReceiver(new ReceiverAdapter() {
                 @Override
                 public void receive(Message msg) {
-                    ChatOperationProtos.ChatMessage chatMessage = null;
+                    ChatOperationProtos.ChatMessage chatMessage;
                     try {
                         chatMessage = ChatOperationProtos.ChatMessage.parseFrom(msg.getBuffer());
                         chatFrame.insertText(chatMessage.getMessage(), "MESSAGE");
-                    } catch (InvalidProtocolBufferException e) {
+                    } catch (InvalidProtocolBufferException ignored) {
                     }
                 }
             });
             channel.connect(channelName);
             join();
+            channel.close();
         } catch (InterruptedException e) {
+            syncThread.sendAction(ChatOperationProtos.ChatAction.ActionType.LEAVE, nickname, channelName);
+            if (channel != null && channel.isOpen())
+                channel.close();
         } catch (Exception e) {
-            chatFrame.insertText("Error while connecting the channel \"" + channelName + "\": " + e + "\n", "LOG");
+            chatFrame.insertText(
+                    "Error while connecting the channel \"" + channelName + "\": " + e + "\n",
+                    "LOG"
+            );
         }
     }
 
     public void sendMessage(String messageString) {
         ChatOperationProtos.ChatMessage chatMessage;
         chatMessage = ChatOperationProtos.ChatMessage.newBuilder()
-                .setMessage("[" + channelName + "] " + chatFrame.getNickname() + ": " + messageString + "\n")
+                .setMessage("[" + channelName + "] " + nickname + ": " + messageString + "\n")
                 .build();
         Message message = new Message(null, null, chatMessage.toByteArray());
         try {

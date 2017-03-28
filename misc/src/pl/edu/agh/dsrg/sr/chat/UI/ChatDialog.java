@@ -7,21 +7,14 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
-/**
- * Created by julia on 27.03.2017.
- */
 public class ChatDialog extends JDialog implements ActionListener {
     private String field;
     private boolean okClicked;
     private String labelText;
 
     private JTextField textField;
-    private JLabel label;
 
-    private JButton buttonOK;
-    private JButton buttonCancel;
-
-    public ChatDialog(JFrame parent, String title, String labelText) {
+    ChatDialog(JFrame parent, String title, String labelText) {
         super(parent, true);
         setTitle(title);
         addWindowListener(new WindowAdapter() {
@@ -35,18 +28,18 @@ public class ChatDialog extends JDialog implements ActionListener {
         setVisible(true);
     }
 
-    public void initLayout() {
+    private void initLayout() {
         setLayout(new GridLayout(2, 2));
         setSize(300, 100);
 
         textField = new JTextField();
 
-        label = new JLabel(labelText);
+        JLabel label = new JLabel(labelText);
 
-        buttonOK = new JButton("OK");
+        JButton buttonOK = new JButton("OK");
         buttonOK.addActionListener(this);
 
-        buttonCancel = new JButton("Cancel");
+        JButton buttonCancel = new JButton("Cancel");
         buttonCancel.addActionListener(this);
 
         add(label);
@@ -69,11 +62,11 @@ public class ChatDialog extends JDialog implements ActionListener {
             setVisible(false);
     }
 
-    public String getField() {
+    String getField() {
         return field;
     }
 
-    public boolean isOkClicked() {
+    boolean isOkClicked() {
         return okClicked;
     }
 }

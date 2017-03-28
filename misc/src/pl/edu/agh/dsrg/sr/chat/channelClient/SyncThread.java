@@ -1,4 +1,4 @@
-package pl.edu.agh.dsrg.sr.chat.client;
+package pl.edu.agh.dsrg.sr.chat.channelClient;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.jgroups.JChannel;
@@ -21,9 +21,6 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by julia on 27.03.2017.
- */
 public class SyncThread extends Thread {
     private ChatFrame chatFrame;
     private JChannel channel;
@@ -70,7 +67,8 @@ public class SyncThread extends Thread {
                             chatFrame.addChannel(channelName, nickname);
                         else if (actionType == ChatOperationProtos.ChatAction.ActionType.LEAVE)
                             chatFrame.removeNicknameFromChannelList(channelName, nickname);
-                    } catch (InvalidProtocolBufferException e) {}
+                    } catch (InvalidProtocolBufferException ignored) {
+                    }
                 }
 
                 @Override
@@ -113,6 +111,11 @@ public class SyncThread extends Thread {
             channel.connect(Chat.managementChannel);
             channel.getState(null, 1000);
             join();
+            channel.close();
+        } catch (InterruptedException e) {
+            chatFrame.exit();
+            if (channel != null && channel.isOpen())
+                channel.close();
         } catch (Exception e) {
             chatFrame.insertText("Error while connecting the management channel: " + e + "\n", "LOG");
         }

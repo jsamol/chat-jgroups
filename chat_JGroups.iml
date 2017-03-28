@@ -11,4 +11,8 @@
     <orderEntry type="library" name="jgroups-3.6.13.Final" level="project" />
     <orderEntry type="library" name="protobuf-java-2.4.1" level="project" />
   </component>
+  <component name="sonarModuleSettings">
+    <option name="localAnalysisScripName" value="&lt;PROJECT&gt;" />
+    <option name="serverName" value="&lt;PROJECT&gt;" />
+  </component>
 </module>
