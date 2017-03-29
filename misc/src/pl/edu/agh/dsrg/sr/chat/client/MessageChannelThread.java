@@ -1,4 +1,4 @@
-package pl.edu.agh.dsrg.sr.chat.channelClient;
+package pl.edu.agh.dsrg.sr.chat.client;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.jgroups.JChannel;
@@ -14,22 +14,17 @@ import java.net.InetAddress;
 
 import static pl.edu.agh.dsrg.sr.chat.Chat.nickname;
 
-public class ChannelThread extends Thread {
-    private JChannel channel = null;
+public class MessageChannelThread extends ChannelThread {
+    private ActionChannelThread actionChannelThread;
 
-    private final ChatFrame chatFrame;
-    private SyncThread syncThread;
-    private String channelName;
-
-    public ChannelThread(ChatFrame chatFrame, SyncThread syncThread, String channelName) {
+    public MessageChannelThread(ChatFrame chatFrame, ActionChannelThread actionChannelThread, String channelName) {
         this.chatFrame = chatFrame;
-        this.syncThread = syncThread;
+        this.actionChannelThread = actionChannelThread;
         this.channelName = channelName;
     }
 
     @Override
     public void run() {
-        System.setProperty("java.net.preferIPv4Stack", "true");
         try {
             channel = new JChannel(false);
             ProtocolStack stack = new ProtocolStack();
@@ -64,12 +59,10 @@ public class ChannelThread extends Thread {
                 }
             });
             channel.connect(channelName);
-            join();
-            channel.close();
         } catch (InterruptedException e) {
-            syncThread.sendAction(ChatOperationProtos.ChatAction.ActionType.LEAVE, nickname, channelName);
-            if (channel != null && channel.isOpen())
+            if (channel != null)
                 channel.close();
+            actionChannelThread.sendAction(ChatOperationProtos.ChatAction.ActionType.LEAVE, nickname, channelName);
         } catch (Exception e) {
             chatFrame.insertText(
                     "Error while connecting the channel \"" + channelName + "\": " + e + ".\n");
@@ -94,19 +87,9 @@ public class ChannelThread extends Thread {
         }
     }
 
-    public String getChannelName() {
-        return channelName;
-    }
-
-
-    public void disconnect() {
-        if (channel != null)
-            channel.close();
-        interrupt();
-    }
-
     @Override
-    public String toString() {
-        return channelName;
+    public void disconnect() {
+        actionChannelThread.sendAction(ChatOperationProtos.ChatAction.ActionType.LEAVE, nickname, channelName);
+        super.disconnect();
     }
 }

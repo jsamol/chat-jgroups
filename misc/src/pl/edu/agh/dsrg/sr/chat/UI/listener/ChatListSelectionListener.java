@@ -19,7 +19,7 @@ public class ChatListSelectionListener implements ListSelectionListener {
     @Override
     public void valueChanged(ListSelectionEvent e) {
         synchronized (chat) {
-            chat.getDefaultListModelUsers().removeAllElements();
+            chat.getUsers().removeAllElements();
             chatFrame.setSelectedChannel(null);
             ListSelectionModel listSelectionModel = (ListSelectionModel) e.getSource();
             if (!e.getValueIsAdjusting() && !listSelectionModel.isSelectionEmpty()) {
@@ -27,9 +27,9 @@ public class ChatListSelectionListener implements ListSelectionListener {
                 int maxIndex = listSelectionModel.getMaxSelectionIndex();
                 for (int i = minIndex; i <= maxIndex; i++) {
                     if (listSelectionModel.isSelectedIndex(i)) {
-                        chatFrame.setSelectedChannel(chat.getDefaultListModelChannels().elementAt(i));
-                        for (String nickname : chat.getDefaultListModelChannels().elementAt(i).getNicknames())
-                            chat.getDefaultListModelUsers().addElement(nickname);
+                        chatFrame.setSelectedChannel(chat.getAllChannels().elementAt(i));
+                        for (String nickname : chat.getAllChannels().elementAt(i).getNicknames())
+                            chat.getUsers().addElement(nickname);
                     }
                 }
             }

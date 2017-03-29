@@ -2,8 +2,8 @@ package pl.edu.agh.dsrg.sr.chat;
 
 import pl.edu.agh.dsrg.sr.chat.UI.ChatDialog;
 import pl.edu.agh.dsrg.sr.chat.UI.ChatFrame;
-import pl.edu.agh.dsrg.sr.chat.channelClient.ChannelThread;
-import pl.edu.agh.dsrg.sr.chat.channelClient.SyncThread;
+import pl.edu.agh.dsrg.sr.chat.client.MessageChannelThread;
+import pl.edu.agh.dsrg.sr.chat.client.ActionChannelThread;
 import pl.edu.agh.dsrg.sr.chat.protos.ChatOperationProtos;
 
 import javax.swing.*;
@@ -17,16 +17,16 @@ public class Chat {
     public static String nickname;
 
     private ChatFrame chatFrame;
-    private SyncThread syncThread;
+    private ActionChannelThread actionChannelThread;
 
     private Map<String, List<String>> history;
 
-    private DefaultComboBoxModel<ChannelThread> defaultComboBoxModelChannels;
-    private DefaultListModel<Channel> defaultListModelChannels;
-    private DefaultListModel<String> defaultListModelUsers;
+    private DefaultComboBoxModel<MessageChannelThread> connectedChannels;
+    private DefaultListModel<Channel> allChannels;
+    private DefaultListModel<String> users;
 
     private Chat() {
-        syncThread = null;
+        actionChannelThread = null;
         history = new LinkedHashMap<>();
     }
 
@@ -35,6 +35,7 @@ public class Chat {
     }
 
     public static void main(String[] args) {
+        System.setProperty("java.net.preferIPv4Stack", "true");
         Chat chat = new Chat();
         chat.start();
     }
@@ -44,37 +45,39 @@ public class Chat {
         if (createNewDialog.isOkClicked()) {
             String channelName;
             channelName = createNewDialog.getField();
-            ChannelThread channelThread = new ChannelThread(chatFrame, syncThread, channelName);
+            MessageChannelThread messageChannelThread =
+                    new MessageChannelThread(chatFrame, actionChannelThread, channelName);
             history.put(channelName, new ArrayList<>());
-            defaultComboBoxModelChannels.addElement(channelThread);
-            channelThread.start();
+            connectedChannels.addElement(messageChannelThread);
+            messageChannelThread.start();
             chatFrame.insertText("New channel \"" + channelName + "\" created.\n");
-            syncThread.sendAction(ChatOperationProtos.ChatAction.ActionType.JOIN, nickname, channelName);
+            chatFrame.insertText("Connected to the channel \"" + channelName + "\".\n");
+            actionChannelThread.sendAction(ChatOperationProtos.ChatAction.ActionType.JOIN, nickname, channelName);
         }
     }
 
     public void connect() {
         if (chatFrame.getSelectedChannel() != null) {
-            for (int i = 0; i < defaultComboBoxModelChannels.getSize(); i++) {
-                if (chatFrame.getSelectedChannel().getName().equals(defaultComboBoxModelChannels.getElementAt(i).getChannelName())) {
-                    chatFrame.insertText(
-                            "Error. You are already connected to the channel \""
-                                    + chatFrame.getSelectedChannel() + "\".\n"
-                    );
+            for (int i = 0; i < connectedChannels.getSize(); i++) {
+                if (chatFrame.getSelectedChannel().getName()
+                        .equals(connectedChannels.getElementAt(i).getChannelName())) {
+                    chatFrame.insertText("Error. You are already connected to the channel \""
+                            + chatFrame.getSelectedChannel() + "\".\n");
                     return;
                 }
             }
-            ChannelThread channelThread =
-                    new ChannelThread(chatFrame, syncThread, chatFrame.getSelectedChannel().getName());
+            MessageChannelThread messageChannelThread =
+                    new MessageChannelThread(chatFrame, actionChannelThread, chatFrame.getSelectedChannel().getName());
             history.put(chatFrame.getSelectedChannel().getName(), new ArrayList<>());
-            defaultComboBoxModelChannels.addElement(channelThread);
-            channelThread.start();
-            syncThread.sendAction(
+            connectedChannels.addElement(messageChannelThread);
+            messageChannelThread.start();
+            actionChannelThread.sendAction(
                     ChatOperationProtos.ChatAction.ActionType.JOIN,
                     nickname,
                     chatFrame.getSelectedChannel().getName()
             );
-            chatFrame.insertText("Connected to the channel \"" + chatFrame.getSelectedChannel().getName() + "\".\n");
+            chatFrame.insertText("Connected to the channel \""
+                    + chatFrame.getSelectedChannel().getName() + "\".\n");
         }
         else
             chatFrame.insertText("Error. Select a channel to connect first.\n");
@@ -82,21 +85,21 @@ public class Chat {
 
     public void disconnect() {
         if (chatFrame.getSelectedChannel() != null) {
-            ChannelThread channelThreadToDisconnect = null;
-            for (int i = 0; i < defaultComboBoxModelChannels.getSize(); i++) {
+            MessageChannelThread messageChannelThreadToDisconnect = null;
+            for (int i = 0; i < connectedChannels.getSize(); i++) {
                 if (chatFrame.getSelectedChannel().getName()
-                        .equals(defaultComboBoxModelChannels.getElementAt(i).getChannelName()))
-                    channelThreadToDisconnect = defaultComboBoxModelChannels.getElementAt(i);
+                        .equals(connectedChannels.getElementAt(i).getChannelName()))
+                    messageChannelThreadToDisconnect = connectedChannels.getElementAt(i);
             }
-            if (channelThreadToDisconnect != null) {
-                channelThreadToDisconnect.disconnect();
-                syncThread.sendAction(
+            if (messageChannelThreadToDisconnect != null) {
+                messageChannelThreadToDisconnect.disconnect();
+                actionChannelThread.sendAction(
                         ChatOperationProtos.ChatAction.ActionType.LEAVE,
                         nickname,
                         chatFrame.getSelectedChannel().getName()
                 );
                 chatFrame.insertText("Disconnected from the channel \"" + chatFrame.getSelectedChannel() + "\".\n");
-                defaultComboBoxModelChannels.removeElement(channelThreadToDisconnect);
+                connectedChannels.removeElement(messageChannelThreadToDisconnect);
                 history.remove(chatFrame.getSelectedChannel().getName());
             }
             else
@@ -110,40 +113,40 @@ public class Chat {
     }
 
     public void exit() {
-        for (int i = 0; i < defaultComboBoxModelChannels.getSize(); i++) {
-            if (!defaultComboBoxModelChannels.getElementAt(i).isInterrupted())
-                defaultComboBoxModelChannels.getElementAt(i).disconnect();
+        for (int i = 0; i < connectedChannels.getSize(); i++) {
+            if (!connectedChannels.getElementAt(i).isInterrupted())
+                connectedChannels.getElementAt(i).disconnect();
         }
-        if (syncThread != null && !syncThread.isInterrupted())
-            syncThread.disconnect();
+        if (actionChannelThread != null && !actionChannelThread.isInterrupted())
+            actionChannelThread.disconnect();
         chatFrame.dispose();
     }
 
     public void addChannel(String channelName, String nickname) {
         synchronized (this) {
-            for (int i = 0; i < defaultListModelChannels.size(); i++) {
-                if (defaultListModelChannels.elementAt(i).getName().equals(channelName)) {
-                    defaultListModelChannels.elementAt(i).addNickname(nickname);
-                    if (defaultListModelChannels.elementAt(i) == chatFrame.getSelectedChannel())
-                        defaultListModelUsers.addElement(nickname);
+            for (int i = 0; i < allChannels.size(); i++) {
+                if (allChannels.elementAt(i).getName().equals(channelName)) {
+                    allChannels.elementAt(i).addNickname(nickname);
+                    if (allChannels.elementAt(i) == chatFrame.getSelectedChannel())
+                        users.addElement(nickname);
                     return;
                 }
             }
             Channel channel = new Channel(channelName);
             channel.addNickname(nickname);
-            defaultListModelChannels.addElement(channel);
+            allChannels.addElement(channel);
         }
     }
 
     public void removeNicknameFromChannelList(String channelName, String nickname) {
         synchronized (this) {
-            for (int i = 0; i < defaultListModelChannels.size(); i++) {
-                if (defaultListModelChannels.elementAt(i).getName().equals(channelName)) {
-                    defaultListModelChannels.elementAt(i).removeNickname(nickname);
-                    if (defaultListModelChannels.elementAt(i).getNicknames().size() == 0)
-                        defaultListModelChannels.remove(i);
-                    else if (defaultListModelChannels.elementAt(i) == chatFrame.getSelectedChannel())
-                        defaultListModelUsers.removeElement(nickname);
+            for (int i = 0; i < allChannels.size(); i++) {
+                if (allChannels.elementAt(i).getName().equals(channelName)) {
+                    allChannels.elementAt(i).removeNickname(nickname);
+                    if (allChannels.elementAt(i).getNicknames().size() == 0)
+                        allChannels.remove(i);
+                    else if (allChannels.elementAt(i) == chatFrame.getSelectedChannel())
+                        users.removeElement(nickname);
                     return;
                 }
             }
@@ -154,35 +157,35 @@ public class Chat {
         return history;
     }
 
-    public SyncThread getSyncThread() {
-        return syncThread;
+    public ActionChannelThread getActionChannelThread() {
+        return actionChannelThread;
     }
 
-    public void setSyncThread(SyncThread syncThread) {
-        this.syncThread = syncThread;
+    public void setActionChannelThread(ActionChannelThread actionChannelThread) {
+        this.actionChannelThread = actionChannelThread;
     }
 
-    public DefaultComboBoxModel<ChannelThread> getDefaultComboBoxModelChannels() {
-        return defaultComboBoxModelChannels;
+    public DefaultComboBoxModel<MessageChannelThread> getConnectedChannels() {
+        return connectedChannels;
     }
 
-    public DefaultListModel<Channel> getDefaultListModelChannels() {
-        return defaultListModelChannels;
+    public DefaultListModel<Channel> getAllChannels() {
+        return allChannels;
     }
 
-    public DefaultListModel<String> getDefaultListModelUsers() {
-        return defaultListModelUsers;
+    public DefaultListModel<String> getUsers() {
+        return users;
     }
 
-    public void setDefaultComboBoxModelChannels(DefaultComboBoxModel<ChannelThread> defaultComboBoxModelChannels) {
-        this.defaultComboBoxModelChannels = defaultComboBoxModelChannels;
+    public void setConnectedChannels(DefaultComboBoxModel<MessageChannelThread> connectedChannels) {
+        this.connectedChannels = connectedChannels;
     }
 
-    public void setDefaultListModelChannels(DefaultListModel<Channel> defaultListModelChannels) {
-        this.defaultListModelChannels = defaultListModelChannels;
+    public void setAllChannels(DefaultListModel<Channel> allChannels) {
+        this.allChannels = allChannels;
     }
 
-    public void setDefaultListModelUsers(DefaultListModel<String> defaultListModelUsers) {
-        this.defaultListModelUsers = defaultListModelUsers;
+    public void setUsers(DefaultListModel<String> users) {
+        this.users = users;
     }
 }

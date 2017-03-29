@@ -4,8 +4,8 @@ import pl.edu.agh.dsrg.sr.chat.Channel;
 import pl.edu.agh.dsrg.sr.chat.Chat;
 import pl.edu.agh.dsrg.sr.chat.UI.listener.ChatActionListener;
 import pl.edu.agh.dsrg.sr.chat.UI.listener.ChatListSelectionListener;
-import pl.edu.agh.dsrg.sr.chat.channelClient.ChannelThread;
-import pl.edu.agh.dsrg.sr.chat.channelClient.SyncThread;
+import pl.edu.agh.dsrg.sr.chat.client.MessageChannelThread;
+import pl.edu.agh.dsrg.sr.chat.client.ActionChannelThread;
 
 import javax.swing.*;
 import java.awt.*;
@@ -17,7 +17,7 @@ public class ChatFrame extends JFrame {
     private final Chat chat;
 
     private Channel selectedChannel = null;
-    private ChannelThread selectedChannelThread = null;
+    private MessageChannelThread selectedConnectedChannel = null;
 
     private JLabel labelNickname;
 
@@ -41,11 +41,11 @@ public class ChatFrame extends JFrame {
         if (enterNicknameDialog.isOkClicked()) {
             nickname = enterNicknameDialog.getField();
             labelNickname.setText("Your nickname: " + nickname);
-            chat.setSyncThread(new SyncThread(chat, this));
-            chat.getSyncThread().start();
+            chat.setActionChannelThread(new ActionChannelThread(chat, this));
+            chat.getActionChannelThread().start();
         }
         else
-            chat.exit();
+            dispose();
     }
 
     private void initLayout() {
@@ -53,13 +53,13 @@ public class ChatFrame extends JFrame {
         setResizable(false);
         setLayout(null);
 
-        chat.setDefaultComboBoxModelChannels(new DefaultComboBoxModel<>());
-        JComboBox<ChannelThread> comboBoxChannelThread = new JComboBox<>(chat.getDefaultComboBoxModelChannels());
+        chat.setConnectedChannels(new DefaultComboBoxModel<>());
+        JComboBox<MessageChannelThread> comboBoxChannelThread = new JComboBox<>(chat.getConnectedChannels());
         comboBoxChannelThread.setBounds(10, 20, 480, 20);
         comboBoxChannelThread.addActionListener(e -> {
             JComboBox comboBox = (JComboBox) e.getSource();
             if (comboBox.getSelectedItem() != null && comboBox.getSelectedItem() != selectedChannel) {
-                selectedChannelThread = (ChannelThread) comboBox.getSelectedItem();
+                selectedConnectedChannel = (MessageChannelThread) comboBox.getSelectedItem();
                 updateTextArea();
             }
             else
@@ -80,8 +80,8 @@ public class ChatFrame extends JFrame {
         labelChannels.setBounds(500, 20, 285, 20);
         add(labelChannels);
 
-        chat.setDefaultListModelChannels(new DefaultListModel<>());
-        JList<Channel> listChannels = new JList<>(chat.getDefaultListModelChannels());
+        chat.setAllChannels(new DefaultListModel<>());
+        JList<Channel> listChannels = new JList<>(chat.getAllChannels());
         listChannels.setFont(listChannels.getFont().deriveFont(Font.PLAIN));
         ListSelectionModel listSelectionModel = listChannels.getSelectionModel();
         listSelectionModel.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -94,8 +94,8 @@ public class ChatFrame extends JFrame {
         labelUsers.setBounds(500, 205, 285, 20);
         add(labelUsers);
 
-        chat.setDefaultListModelUsers(new DefaultListModel<>());
-        JList<String> listUsers = new JList<>(chat.getDefaultListModelUsers());
+        chat.setUsers(new DefaultListModel<>());
+        JList<String> listUsers = new JList<>(chat.getUsers());
         listUsers.setFont(listUsers.getFont().deriveFont(Font.PLAIN));
         JScrollPane scrollPaneBottomRight = new JScrollPane(listUsers);
         scrollPaneBottomRight.setBounds(500, 230, 285, 155);
@@ -156,8 +156,8 @@ public class ChatFrame extends JFrame {
     }
 
     private void updateTextArea() {
-        textAreaChat.setText("\t\tChannel \"" + selectedChannelThread.getChannelName() + "\"\n\n");
-        for (String message : chat.getHistory().get(selectedChannelThread.getChannelName()))
+        textAreaChat.setText("\t\tChannel \"" + selectedConnectedChannel.getChannelName() + "\"\n\n");
+        for (String message : chat.getHistory().get(selectedConnectedChannel.getChannelName()))
             textAreaChat.append(message);
     }
 
@@ -166,13 +166,13 @@ public class ChatFrame extends JFrame {
         if (message.equals(""))
             return;
         textAreaMessage.setText("");
-        if (selectedChannelThread != null)
-            selectedChannelThread.sendMessage(message);
+        if (selectedConnectedChannel != null)
+            selectedConnectedChannel.sendMessage(message);
     }
 
     public void insertText(String text, String channelName) {
         chat.getHistory().get(channelName).add(text);
-        if (channelName.equals(selectedChannelThread.getChannelName()))
+        if (channelName.equals(selectedConnectedChannel.getChannelName()))
             textAreaChat.append(text);
         else
             insertText("Received message on the channel \"" + channelName + "\".\n");

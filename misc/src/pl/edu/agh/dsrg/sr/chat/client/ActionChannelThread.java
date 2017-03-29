@@ -1,4 +1,4 @@
-package pl.edu.agh.dsrg.sr.chat.channelClient;
+package pl.edu.agh.dsrg.sr.chat.client;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.jgroups.JChannel;
@@ -21,19 +21,16 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SyncThread extends Thread {
+public class ActionChannelThread extends ChannelThread {
     private final Chat chat;
-    private final ChatFrame chatFrame;
-    private JChannel channel;
 
-    public SyncThread(Chat chat, ChatFrame chatFrame) {
+    public ActionChannelThread(Chat chat, ChatFrame chatFrame) {
         this.chat = chat;
         this.chatFrame = chatFrame;
     }
 
     @Override
     public void run() {
-        System.setProperty("java.net.preferIPv4Stack", "true");
         try {
             channel = new JChannel(false);
             ProtocolStack stack = new ProtocolStack();
@@ -75,10 +72,10 @@ public class SyncThread extends Thread {
 
                 @Override
                 public void getState(OutputStream output) throws Exception {
-                    synchronized (chat.getDefaultListModelChannels()) {
+                    synchronized (chat.getAllChannels()) {
                         ChatOperationProtos.ChatState chatState;
                         List<ChatOperationProtos.ChatAction> chatActionsList = new ArrayList<>();
-                        DefaultListModel<Channel> defaultListModelChannels = chat.getDefaultListModelChannels();
+                        DefaultListModel<Channel> defaultListModelChannels = chat.getAllChannels();
                         for (int i = 0; i < defaultListModelChannels.size(); i++) {
                             String channelName = defaultListModelChannels.elementAt(i).getName();
                             for (String nickname : defaultListModelChannels.elementAt(i).getNicknames()) {
@@ -112,10 +109,8 @@ public class SyncThread extends Thread {
             });
             channel.connect(Chat.managementChannel);
             channel.getState(null, 1000);
-            join();
-            channel.close();
-        } catch (InterruptedException e) {
-            if (channel != null && channel.isOpen())
+        } catch (InterruptedException e){
+            if (channel != null)
                 channel.close();
         } catch (Exception e) {
             chatFrame.insertText("Error while connecting the management channel: " + e + ".\n");
@@ -135,11 +130,5 @@ public class SyncThread extends Thread {
         } catch (Exception e) {
             chatFrame.insertText("Error while sending a message to the management channel: " + e + ".\n");
         }
-    }
-
-    public void disconnect() {
-        if (channel != null)
-            channel.close();
-        interrupt();
     }
 }
